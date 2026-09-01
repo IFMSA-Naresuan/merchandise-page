@@ -75,7 +75,7 @@ Silence, a wireframe detail, an inferred convention, or an entry under **Open qu
 
 ## Current project state
 
-As of 2026-08-30:
+As of 2026-09-02:
 
 - the repository now contains the initial front-end wireframe implementation;
 - a Next.js App Router and Tailwind CSS project is configured for deployment to Vercel;
@@ -83,6 +83,9 @@ As of 2026-08-30:
 - each React component is kept in a focused file under `src/components/`, while `App.jsx` composes the page sections and `src/app/page.jsx` provides the Next.js route entry point;
 - the desktop layout displays eight cards in four columns, while the mobile layout displays four cards in two columns;
 - the cart is absent from both layouts, while the header structure can accommodate a future action;
+- the project owner has added IFMSA page metadata and favicon configuration, replaced the header placeholders with IFMSA branding and local menu/search icons, and added local social icons plus copyright content to the footer;
+- static interface icons are stored under `public/icons/` and referenced through root-relative `/icons/...` paths;
+- the footer copyright occupies its own final row beneath the flexible contact-content area so it remains at the bottom of the footer;
 - `README.md` still contains only the project title;
 - a restricted Google Sheet with separate `Products` and `Variants` tabs has been proposed as the data source, but its secure integration is not part of the framework migration;
 - Vercel is the confirmed deployment target;
@@ -154,6 +157,7 @@ Record confirmed decisions here. Do not record proposals as decisions.
 | 2026-08-28 | Keep React components in separate files for easier reading and maintenance, and use `App.jsx` as the page-composition layer. | Project owner |
 | 2026-08-30 | Replace Vite with the Next.js App Router while preserving the existing wireframe and component separation. | Project owner |
 | 2026-08-30 | Use Vercel as the deployment target. | Project owner |
+| 2026-09-02 | Preserve the project-owner metadata, IFMSA header branding, local interface/social icons, and footer content changes; keep the copyright section below all other footer content. | Project owner |
 
 ## Change record
 
@@ -164,3 +168,4 @@ Record confirmed decisions here. Do not record proposals as decisions.
 | 2026-08-28 | Recorded the confirmed React/Tailwind wireframe implementation, the excluded reference-viewer controls, and the cart-removal decision. |
 | 2026-08-28 | Recorded the component-per-file organization and composition-only role of `App.jsx`. |
 | 2026-08-30 | Replaced Vite with Next.js in the confirmed stack and recorded Vercel as the deployment target. |
+| 2026-09-02 | Recorded the project-owner branding/icon changes and the confirmed bottom-positioned footer copyright behavior. |
