@@ -3,11 +3,6 @@ import { ExternalAccountClient } from "google-auth-library";
 
 /**
  * Parses Google Drive share URL or =HYPERLINK() formula into a direct image CDN URL.
- * Handles formats like:
- * - =HYPERLINK("https://drive.google.com/file/d/FILE_ID/view?usp=sharing", "H/view...")
- * - https://drive.google.com/file/d/FILE_ID/view?usp=sharing
- * - H/view?usp=sharing
- * - FILE_ID directly
  */
 export function parseDriveImageUrl(url) {
   if (!url) return "";
@@ -48,8 +43,8 @@ export function parseDriveImageUrl(url) {
 
 /**
  * Initializes Google Auth Client supporting:
- * 1. Workload Identity Federation via Vercel OIDC (Production)
- * 2. Service Account Private Key (Local Development / Fallback)
+ * 1. Service Account Private Key (GOOGLE_PRIVATE_KEY - Highest Priority & Most Reliable)
+ * 2. Workload Identity Federation (GCP_WORKLOAD_IDENTITY_PROVIDER + VERCEL_OIDC_TOKEN)
  */
 export async function getSheetsClient() {
   const serviceAccountEmail =
@@ -59,8 +54,17 @@ export async function getSheetsClient() {
 
   let auth;
 
-  // Strategy 1: Workload Identity Federation (Vercel OIDC Provider)
-  if (process.env.GCP_WORKLOAD_IDENTITY_PROVIDER && process.env.VERCEL_OIDC_TOKEN) {
+  // Strategy 1: Service Account Key (Highest Priority & Most Reliable)
+  if (process.env.GOOGLE_PRIVATE_KEY) {
+    const privateKey = process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, "\n");
+    auth = new google.auth.JWT({
+      email: serviceAccountEmail,
+      key: privateKey,
+      scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
+    });
+  }
+  // Strategy 2: Workload Identity Federation (Vercel OIDC Token)
+  else if (process.env.GCP_WORKLOAD_IDENTITY_PROVIDER && process.env.VERCEL_OIDC_TOKEN) {
     auth = ExternalAccountClient.fromJSON({
       type: "external_account",
       audience: `//iam.googleapis.com/${process.env.GCP_WORKLOAD_IDENTITY_PROVIDER}`,
@@ -72,20 +76,15 @@ export async function getSheetsClient() {
       },
       scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
     });
-  }
-  // Strategy 2: Service Account Key (Local Development / Fallback)
-  else if (process.env.GOOGLE_PRIVATE_KEY) {
-    const privateKey = process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, "\n");
-    auth = new google.auth.JWT({
-      email: serviceAccountEmail,
-      key: privateKey,
-      scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
-    });
+  } else if (process.env.GCP_WORKLOAD_IDENTITY_PROVIDER && !process.env.VERCEL_OIDC_TOKEN) {
+    throw new Error(
+      "GCP_WORKLOAD_IDENTITY_PROVIDER is set, but Vercel OIDC Token is not enabled on this project. Please set GOOGLE_PRIVATE_KEY in Vercel Environment Variables instead."
+    );
   } else if (process.env.GOOGLE_API_KEY) {
     return google.sheets({ version: "v4", auth: process.env.GOOGLE_API_KEY });
   } else {
     throw new Error(
-      "Missing Google Auth credentials. Please set GOOGLE_PRIVATE_KEY or GCP_WORKLOAD_IDENTITY_PROVIDER in environment variables."
+      "Missing Google Auth credentials. Please set GOOGLE_PRIVATE_KEY in Vercel Environment Variables."
     );
   }
 
@@ -93,7 +92,7 @@ export async function getSheetsClient() {
 }
 
 /**
- * Fetches items and variants from Google Sheet dynamically with double-fallback fetching.
+ * Fetches items and variants from Google Sheet dynamically.
  */
 export async function getMerchandiseProducts() {
   const spreadsheetId = process.env.GOOGLE_SHEET_ID;
@@ -122,7 +121,7 @@ export async function getMerchandiseProducts() {
     tabNames.find((name) => name.toLowerCase().includes("variant")) ||
     (tabNames.length > 1 ? tabNames[1] : null);
 
-  // Helper to fetch sheet values safely with FORMULA fallback
+  // Helper to fetch sheet values safely
   async function fetchSheetValues(tabName, rangeCols) {
     const range = tabName ? `'${tabName}'!${rangeCols}` : rangeCols;
     try {
