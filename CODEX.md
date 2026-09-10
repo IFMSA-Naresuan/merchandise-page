@@ -1,4 +1,4 @@
-# Project end-goal: create an interactive merchandise catalog page
+# Project end-goal: introduce IFMSA-NU and lead into an interactive merchandise catalog
 
 ## Purpose of this document
 
@@ -18,6 +18,10 @@ This document is a planning and memory reference. It does not authorize implemen
 ### End goal
 
 Create an interactive merchandise catalog page that displays available merchandise and stock information. Customers will not complete purchases on the website; purchasing will be handled through direct contact outside the site.
+
+The approved Landing Narrative V1 introduces the organization before merchandise:
+Hero → What We Do → Learn / Connect / Act → Support Us → existing merchandise catalogue.
+The opening explains the provisional idea that medical learning and collaboration can lead to community health action.
 
 ### Catalog and purchasing boundary
 
@@ -56,9 +60,43 @@ They currently suggest:
 - a footer containing links, social details, or organization information;
 - approximately four product columns on desktop and two on the illustrated mobile width.
 
-The later `merch-store-wireframe-E.html` reference is the confirmed layout for the current implementation. Only its inner responsive merchandise page is implemented; the reference viewer's viewport controls, legend, and surrounding canvas are not part of the site. The visible layout remains a wireframe and contains no production content or additional features.
+The later `merch-store-wireframe-E.html` reference remains the basis of the current catalogue. Only its inner responsive merchandise page is implemented; the reference viewer's viewport controls, legend, and surrounding canvas are not part of the site. The catalogue remains a wireframe. The 2026-09-11 Landing Narrative V1 brief authorizes an editorial organization-first opening before it.
 
-Any cart or checkout element suggested by either wireframe is excluded. The header layout keeps an unrendered action slot so a future confirmed control can be added without restructuring the header.
+Any cart or checkout element suggested by either wireframe is excluded. The new header uses links to What We Do, Merchandise, and Contact; the old inert search/menu icons are replaced by working section navigation.
+
+## Landing Narrative V1 — approved first pass
+
+**Current visual override (2026-09-11):** The owner requested removing the book-and-three-branches SVG from the page. It is no longer rendered in Hero or Support Us; its unused `LearningMotif.jsx` source is retained for reversibility. The related SVG styling and hero sticky/zoom sequence are removed, so there is no extra scroll hold around a missing visual. Other narrative transitions, copy, catalogue, and footer remain intact. The earlier implementation notes below describe the prior pass where they conflict with this override.
+
+The owner supplied [Corn Revolution — Testing](https://cornrevolution.resn.global/#testing) as a possible 3D direction and asked about asset requirements. This authorizes investigation, not implementation of a new 3D scene or installation of dependencies. Visual subject, asset source, and real-time 3D versus pre-rendered animation remain unconfirmed. Keep a potential landing visual independent of sheet-driven catalogue maintenance.
+
+- Refine the existing Next.js/React/Tailwind implementation; preserve catalogue cards, data boundaries, and the owner's latest footer changes.
+- Use LOCARB.GREEN only as an editorial art-direction reference. Do not reproduce its branding, layout, or animation sequences.
+- Present an original connected page/medical/community SVG in the hero. It is a landing illustration, not a verified official IFMSA-NU logo.
+- Use the existing `#2b4265` navy, neutral paper backgrounds, and a restrained teal accent. The new accent and illustration are first-pass design interpretations, not claimed official brand standards.
+- Keep editable landing/navigation copy in `src/content/landing.js`. Its status metadata explicitly marks the narrative as provisional editorial copy, pending organizational review. Do not describe it as an official mission, or invent impact metrics, affiliations, or funding allocations.
+- `src/components/landing/` contains `Hero`, `LearningMotif`, `WhatWeDo`, `LearnConnectAct`, `SupportUs`, `CatalogueEntry`, and `NarrativeMotion`. `src/app/landing.css` holds responsive composition and motion rules, imported by `globals.css`.
+- Keep browser scrolling native. CSS scroll timelines progressively enlarge/fade the hero and raise the catalogue where supported; IntersectionObserver reveals upcoming sections once. Content is visible without JavaScript. Reduced-motion preferences disable these effects and smooth scrolling.
+- Mobile navigation uses a native disclosure, with enhanced close-on-selection and Escape behavior. All navigation targets are sections on this page.
+- Poppins uses existing local font faces; the footer keeps ExtraLight (200). Thai content can be marked `lang="th"` to use OS Thai faces, normal tracking, and generous line height. Reviewed Thai copy and a bundled Thai font have not been supplied.
+- The catalogue handoff adds a heading and overlapping paper surface only. Product cards, responsive counts, and placeholder content are retained; `ProductGrid` changes its outer `main` to `div` so the whole page has one main landmark.
+- The existing collection tabs are disabled and remain so. Filtering, real products, product details, ordering flows, Google Sheets integration, checkout, payment, and deployment are outside this first pass.
+
+This explicit implementation brief authorizes the first pass above without another confirmation round. Stop after implementing and verifying this pass; future product interactions require their own scope.
+
+First-pass verification (2026-09-11): `next build --webpack` passes. Browser checks covered 320–1440px widths, the desktop/mobile narrative, section links, mobile menu selection/Escape, and the retained card counts; no horizontal overflow or browser errors were found after fixes. Generated HTML contains the narrative and catalogue before JavaScript, a native mobile disclosure, one `main`, and one `h1`. Reduced-motion handling is included in both CSS and the observer setup; OS preference emulation was not available in this browser tool. Nothing was deployed as part of this pass.
+
+### Approved reference-driven motion refinement
+
+The owner subsequently requested studying [Impressive 2025 Website Design Inspiration](https://www.youtube.com/watch?v=RGWXVbkrYKM) and adapting it to this landing, alongside the earlier [Earth website animation reference](https://www.youtube.com/shorts/_-Eo8G3CYWc). Selected typography and scroll-scene examples informed this refinement; their content, branding, 3D assets, and layouts are not copied.
+
+- `Hero.jsx` now provides an outer chapter for a brief native CSS sticky scene. The existing SVG grows as the introductory copy recedes, before the mission section enters. The extra scroll distance is 48svh on desktop and 32svh on mobile. Viewports shorter than 700px and browsers without scroll-timeline support retain the unpinned layout.
+- `WhatWeDo.jsx` wraps the existing heading lines for staggered masked reveals and normalizes its decorative SVG path for a one-time line draw. Copy and heading semantics stay intact.
+- `landing.css` adds the hero scene, heading masks, progressing Learn / Connect / Act line and node highlights, a small Support Us text lift, and a scaling/rising catalogue surface. The existing reveal observer is reused; no package or new JavaScript scroll handler is needed.
+- Reduced-motion mode uses the normal unpinned layout with all text visible. CSS timeline effects remain available without JavaScript, while observer-based reveals stay visible when JavaScript is unavailable.
+- No catalogue functionality, footer content, font roles, backend services, or deployment changes are included.
+
+Refinement verification (2026-09-11): production `next build --webpack` passes; browser checks at 320px, 375px, 740px, and 1440px found no horizontal overflow. Desktop/mobile hero transforms and sticky positioning were inspected during scroll. A 600px-high viewport correctly disables the sticky hero. Mission/catalogue anchor links and the desktop support-to-catalogue overlap were checked, with no browser errors. Server HTML retains one main landmark, one h1, and visible narrative/catalogue content. Reduced-motion CSS guards were reviewed; OS preference emulation was unavailable. Not committed or deployed.
 
 ## Confirmation-first working rule
 
@@ -75,21 +113,23 @@ Silence, a wireframe detail, an inferred convention, or an entry under **Open qu
 
 ## Current project state
 
-As of 2026-09-02:
+As of 2026-09-11:
 
 - the repository now contains the initial front-end wireframe implementation;
 - a Next.js App Router and Tailwind CSS project is configured for deployment to Vercel;
 - the confirmed desktop and mobile wireframe layout is implemented with placeholder content;
 - each React component is kept in a focused file under `src/components/`, while `App.jsx` composes the page sections and `src/app/page.jsx` provides the Next.js route entry point;
+- the page opens with an organization-first editorial narrative and hands off to the existing catalogue;
 - the desktop layout displays eight cards in four columns, while the mobile layout displays four cards in two columns;
-- the cart is absent from both layouts, while the header structure can accommodate a future action;
+- the cart is absent from both layouts, and the header offers section navigation with a mobile disclosure;
 - the project owner has added IFMSA page metadata and favicon configuration, replaced the header placeholders with IFMSA branding and local menu/search icons, and added local social icons plus copyright content to the footer;
 - static interface icons are stored under `public/icons/` and referenced through root-relative `/icons/...` paths;
-- the footer copyright occupies its own final row beneath the flexible contact-content area so it remains at the bottom of the footer;
+- the owner's latest footer uses `#2b4265`, a Contact Us title, Facebook/Instagram links, and the unchanged copyright line; it is now the `#contact` navigation target;
+- typography is self-hosted through CSS `@font-face`: Poppins ExtraLight (200), SemiBold (600), and Bold (700) are available; the copyright remains ExtraLight;
 - `README.md` still contains only the project title;
 - a restricted Google Sheet with separate `Products` and `Variants` tabs has been proposed as the data source, but its secure integration is not part of the framework migration;
 - Vercel is the confirmed deployment target;
-- no catalog data integration, contact flow, or production styling has been implemented.
+- no catalogue data integration or product ordering flow has been implemented; the new narrative styling is a first pass with provisional content.
 
 ## Intended high-level work sequence
 
@@ -158,6 +198,9 @@ Record confirmed decisions here. Do not record proposals as decisions.
 | 2026-08-30 | Replace Vite with the Next.js App Router while preserving the existing wireframe and component separation. | Project owner |
 | 2026-08-30 | Use Vercel as the deployment target. | Project owner |
 | 2026-09-02 | Preserve the project-owner metadata, IFMSA header branding, local interface/social icons, and footer content changes; keep the copyright section below all other footer content. | Project owner |
+| 2026-09-02 | Restyle the footer after the supplied reference using `#2b4265`, an IFMSA wordmark in the logo position, the existing contact/social content, and a back-to-top control without inventing unconfirmed navigation links. | Project owner |
+| 2026-09-03 | Self-host the supplied fonts with CSS `@font-face`; use Poppins Bold for the IFMSA wordmark and Poppins ExtraLight (200) for copyright text without adding font configuration to `layout.jsx`. | Project owner |
+| 2026-09-11 | Implement Landing Narrative V1: organization-first hero, mission thesis, Learn / Connect / Act progression, Support Us scene, and a responsive handoff into the existing catalogue. Centralize provisional copy; preserve native scrolling and reduced-motion support; do not expand catalogue functionality or backend scope. | Project owner |
 
 ## Change record
 
@@ -169,3 +212,6 @@ Record confirmed decisions here. Do not record proposals as decisions.
 | 2026-08-28 | Recorded the component-per-file organization and composition-only role of `App.jsx`. |
 | 2026-08-30 | Replaced Vite with Next.js in the confirmed stack and recorded Vercel as the deployment target. |
 | 2026-09-02 | Recorded the project-owner branding/icon changes and the confirmed bottom-positioned footer copyright behavior. |
+| 2026-09-02 | Recorded the approved two-tier IFMSA footer reference layout and its retained content boundary. |
+| 2026-09-03 | Added local Poppins Bold and ExtraLight font roles for the footer and documented the font-file cleanup. |
+| 2026-09-11 | Recorded the approved narrative first pass, component/content locations, motion fallbacks, design assumptions, current owner footer changes, and remaining catalogue/content work. |

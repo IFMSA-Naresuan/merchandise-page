@@ -1,56 +1,47 @@
-import WireframeBlock from "./WireframeBlock.jsx";
-import WireframeIcon from "./WireframeIcon.jsx";
-import Image from "next/image";
+"use client";
+
+import { useRef } from "react";
+import { landingContent } from "../content/landing.js";
 
 export default function Header() {
+  const menu = useRef(null);
+  const menuSummary = useRef(null);
+  const { nav } = landingContent;
+
+  function closeOnEscape(event) {
+    if (event.key === "Escape" && menu.current?.open) {
+      menu.current.open = false;
+      menuSummary.current?.focus();
+    }
+  }
+
   return (
-    <header className="h-30 border border-slate-400 bg-[#2b4265]">
-      <div className="mx-auto hidden h-full max-w-[1280px] grid-cols-[160px_1fr_160px] items-center px-6 lg:grid">
-        <div>
-          <h1 className="
-            text-3xl text-white
-            font-bold
-            tracking-wide
-            ">
-            I F M S A
-          </h1>
-        </div>
-        <div className="w-[360px] items-center justify-self-center gap-4 lg:flex"/>
-        <div className="flex justify-self-end gap-4">
-          <button className="bg-transparent border-none cursor-pointer">
-          <Image
-            src="/icons/search.svg"
-            className="invert"
-            alt="Search"
-            width={24}
-            height={24}
-          />
-          </button>
-        </div>
+    <header className="landing-header" onKeyDown={closeOnEscape}>
+      <a className="skip-link" href="#main-content">{nav.skipLabel}</a>
+      <div className="landing-shell header-inner">
+        <a className="header-brand" href="#top">
+          <span className="brand-node" aria-hidden="true" />{nav.brand}
+        </a>
+        <nav aria-label="Primary navigation" className="header-navigation">
+          {nav.items.map((item) => (
+            <a key={item.href} href={item.href}>
+              {item.label}
+            </a>
+          ))}
+        </nav>
+        <details ref={menu} className="mobile-menu">
+          <summary ref={menuSummary} className="menu-toggle">
+            {nav.menuLabel}<span aria-hidden="true" />
+          </summary>
+          <nav aria-label="Primary navigation" className="mobile-navigation">
+            {nav.items.map((item) => (
+              <a key={item.href} href={item.href} onClick={() => { menu.current.open = false; }}>
+                {item.label}
+              </a>
+            ))}
+          </nav>
+        </details>
       </div>
-
-      <div className="mx-auto grid h-full max-w-[1280px] grid-cols-[44px_1fr_44px] items-center px-2 lg:hidden">
-        <div className="flex justify-self-end gap-4">
-          <button className="bg-transparent border-none cursor-pointer">
-          <Image
-            src="/icons/menu.svg"
-            className="invert"
-            alt="Menu"
-            width={44}
-            height={44}
-          />
-          </button>
-        </div>
-        <h1 className="
-            text-4xl text-white
-            font-bold
-            tracking-wide
-            justify-self-center
-            ">
-            I F M S A
-        </h1>
-      </div>
-
     </header>
   );
 }
