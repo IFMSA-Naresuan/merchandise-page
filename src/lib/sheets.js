@@ -2,25 +2,31 @@ import { google } from "googleapis";
 import { ExternalAccountClient } from "google-auth-library";
 
 /**
- * Parses Google Drive share URL into a direct image CDN URL.
- * Converts formats like:
+ * Parses Google Drive share URL or =HYPERLINK() formula into a direct image CDN URL.
+ * Handles formats like:
+ * - =HYPERLINK("https://drive.google.com/file/d/FILE_ID/view?usp=sharing", "H/view...")
  * - https://drive.google.com/file/d/FILE_ID/view?usp=sharing
- * - H/view?usp=sharing
  * - FILE_ID directly
  */
 export function parseDriveImageUrl(url) {
   if (!url) return "";
   if (typeof url !== "string") return "";
 
-  // If already a full http URL that isn't Google Drive, return as is
+  // If cell is a =HYPERLINK("https://...", "...") formula, extract the 1st argument (the real URL)
+  const hyperlinkMatch = url.match(/=HYPERLINK\(\s*["']([^"']+)["']/i);
+  if (hyperlinkMatch) {
+    url = hyperlinkMatch[1];
+  }
+
+  // If already a direct http URL that isn't Google Drive, return as is
   if (url.startsWith("http") && !url.includes("drive.google.com") && !url.includes("docs.google.com")) {
     return url;
   }
 
   let fileId = "";
 
-  // Extract ID from full URL or share string
-  const fileDMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+  // Extract ID from /file/d/FILE_ID or /d/FILE_ID
+  const fileDMatch = url.match(/\/(?:file\/d|d)\/([a-zA-Z0-9_-]+)/);
   if (fileDMatch) {
     fileId = fileDMatch[1];
   } else {
@@ -115,11 +121,12 @@ export async function getMerchandiseProducts() {
     tabNames.find((name) => name.toLowerCase().includes("variant")) ||
     (tabNames.length > 1 ? tabNames[1] : null);
 
-  // Fetch items and variants using actual tab names safely wrapped in quotes
+  // Fetch items and variants using actual tab names with valueRenderOption FORMULA
   const [itemsRes, variantsRes] = await Promise.all([
     sheets.spreadsheets.values.get({
       spreadsheetId,
       range: `'${itemsTabName}'!A2:F`,
+      valueRenderOption: "FORMULA",
     }),
 
     variantsTabName
@@ -127,6 +134,7 @@ export async function getMerchandiseProducts() {
           .get({
             spreadsheetId,
             range: `'${variantsTabName}'!A2:E`,
+            valueRenderOption: "FORMULA",
           })
           .catch(() => ({ data: { values: [] } }))
       : Promise.resolve({ data: { values: [] } }),
@@ -136,22 +144,28 @@ export async function getMerchandiseProducts() {
   const rawVariants = variantsRes.data.values || [];
 
   // Parse variants list
-  const variants = rawVariants.map((row) => ({
-    variantId: row[0] || "",
-    itemId: row[1] || "",
-    variantName: row[2] || "Default",
-    quantity: Number(row[3]) || 0,
-    imgUrl: parseDriveImageUrl(row[4] || ""),
-  }));
+  const variants = rawVariants
+    .filter((row) => row && row[0] && row[0].toString().trim() !== "")
+    .map((row) => ({
+      variantId: (row[0] || "").toString().trim(),
+      itemId: (row[1] || "").toString().trim(),
+      variantName: (row[2] || "Default").toString().trim(),
+      quantity: Number((row[3] || "0").toString().replace(/[^0-9.]/g, "")) || 0,
+      imgUrl: parseDriveImageUrl((row[4] || "").toString()),
+    }));
 
   // Parse items and attach matching variants
-  const products = rawItems.map((row) => {
-    const itemId = row[0] || "";
-    const itemName = row[1] || "";
-    const price = Number(row[2]) || 0;
-    const defaultImgUrl = parseDriveImageUrl(row[3] || "");
-    const haveVariant = (row[4] || "").toString().toUpperCase() === "TRUE";
-    const outOfStock = (row[5] || "").toString().toUpperCase() === "TRUE";
+  const validItemRows = rawItems.filter(
+    (row) => row && row[0] && row[0].toString().trim() !== ""
+  );
+
+  const products = validItemRows.map((row) => {
+    const itemId = (row[0] || "").toString().trim();
+    const itemName = (row[1] || "").toString().trim();
+    const price = Number((row[2] || "0").toString().replace(/[^0-9.]/g, "")) || 0;
+    const defaultImgUrl = parseDriveImageUrl((row[3] || "").toString());
+    const haveVariant = (row[4] || "").toString().toUpperCase().includes("TRUE");
+    const outOfStock = (row[5] || "").toString().toUpperCase().includes("TRUE");
 
     const itemVariants = variants.filter((v) => v.itemId === itemId);
 
