@@ -42,29 +42,20 @@ export function parseDriveImageUrl(url) {
 }
 
 /**
- * Initializes Google Auth Client supporting:
- * 1. Service Account Private Key (GOOGLE_PRIVATE_KEY - Highest Priority & Most Reliable)
- * 2. Workload Identity Federation (GCP_WORKLOAD_IDENTITY_PROVIDER + VERCEL_OIDC_TOKEN)
+ * Initializes Google Auth Client for keyless Workload Identity Federation via Vercel OIDC.
  */
-export async function getSheetsClient() {
+export async function getSheetsClient(passedOidcToken) {
   const serviceAccountEmail =
     process.env.GCP_SERVICE_ACCOUNT_EMAIL ||
     process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL ||
     "merch-catalog-reader@project-07cd9b1e-82c4-4b1f-bf3.iam.gserviceaccount.com";
 
+  const oidcToken = passedOidcToken || process.env.VERCEL_OIDC_TOKEN;
+
   let auth;
 
-  // Strategy 1: Service Account Key (Highest Priority & Most Reliable)
-  if (process.env.GOOGLE_PRIVATE_KEY) {
-    const privateKey = process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, "\n");
-    auth = new google.auth.JWT({
-      email: serviceAccountEmail,
-      key: privateKey,
-      scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
-    });
-  }
-  // Strategy 2: Workload Identity Federation (Vercel OIDC Token)
-  else if (process.env.GCP_WORKLOAD_IDENTITY_PROVIDER && process.env.VERCEL_OIDC_TOKEN) {
+  // Keyless Workload Identity Federation (Vercel OIDC Provider)
+  if (process.env.GCP_WORKLOAD_IDENTITY_PROVIDER && oidcToken) {
     auth = ExternalAccountClient.fromJSON({
       type: "external_account",
       audience: `//iam.googleapis.com/${process.env.GCP_WORKLOAD_IDENTITY_PROVIDER}`,
@@ -72,19 +63,26 @@ export async function getSheetsClient() {
       token_url: "https://sts.googleapis.com/v1/token",
       service_account_impersonation_url: `https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${serviceAccountEmail}:generateAccessToken`,
       subject_token_supplier: {
-        getSubjectToken: async () => process.env.VERCEL_OIDC_TOKEN,
+        getSubjectToken: async () => oidcToken,
       },
       scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
     });
-  } else if (process.env.GCP_WORKLOAD_IDENTITY_PROVIDER && !process.env.VERCEL_OIDC_TOKEN) {
+  } else if (process.env.GCP_WORKLOAD_IDENTITY_PROVIDER && !oidcToken) {
     throw new Error(
-      "GCP_WORKLOAD_IDENTITY_PROVIDER is set, but Vercel OIDC Token is not enabled on this project. Please set GOOGLE_PRIVATE_KEY in Vercel Environment Variables instead."
+      "GCP_WORKLOAD_IDENTITY_PROVIDER is configured, but Vercel OIDC Token was not detected. Please enable OpenID Connect under Vercel Project Settings -> Security."
     );
+  } else if (process.env.GOOGLE_PRIVATE_KEY) {
+    const privateKey = process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, "\n");
+    auth = new google.auth.JWT({
+      email: serviceAccountEmail,
+      key: privateKey,
+      scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
+    });
   } else if (process.env.GOOGLE_API_KEY) {
     return google.sheets({ version: "v4", auth: process.env.GOOGLE_API_KEY });
   } else {
     throw new Error(
-      "Missing Google Auth credentials. Please set GOOGLE_PRIVATE_KEY in Vercel Environment Variables."
+      "Missing authentication configuration. Please configure GCP_WORKLOAD_IDENTITY_PROVIDER and enable Vercel OpenID Connect."
     );
   }
 
@@ -94,13 +92,13 @@ export async function getSheetsClient() {
 /**
  * Fetches items and variants from Google Sheet dynamically.
  */
-export async function getMerchandiseProducts() {
+export async function getMerchandiseProducts(passedOidcToken) {
   const spreadsheetId = process.env.GOOGLE_SHEET_ID;
   if (!spreadsheetId) {
     throw new Error("GOOGLE_SHEET_ID environment variable is missing.");
   }
 
-  const sheets = await getSheetsClient();
+  const sheets = await getSheetsClient(passedOidcToken);
 
   // 1. Retrieve exact tab names from spreadsheet metadata
   let tabNames = [];
