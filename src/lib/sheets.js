@@ -1,5 +1,6 @@
 import { google } from "googleapis";
 import { ExternalAccountClient } from "google-auth-library";
+import { getVercelOidcToken } from "@vercel/oidc";
 
 /**
  * Parses Google Drive share URL or =HYPERLINK() formula into a direct image CDN URL.
@@ -42,7 +43,7 @@ export function parseDriveImageUrl(url) {
 }
 
 /**
- * Initializes Google Auth Client for keyless Workload Identity Federation via Vercel OIDC.
+ * Initializes Google Auth Client for keyless Workload Identity Federation via Vercel OIDC SDK.
  */
 export async function getSheetsClient(passedOidcToken) {
   const serviceAccountEmail =
@@ -50,7 +51,16 @@ export async function getSheetsClient(passedOidcToken) {
     process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL ||
     "merch-catalog-reader@project-07cd9b1e-82c4-4b1f-bf3.iam.gserviceaccount.com";
 
-  const oidcToken = passedOidcToken || process.env.VERCEL_OIDC_TOKEN;
+  let oidcToken = passedOidcToken || process.env.VERCEL_OIDC_TOKEN;
+
+  // Fetch token via official @vercel/oidc SDK if not passed explicitly
+  if (!oidcToken) {
+    try {
+      oidcToken = await getVercelOidcToken();
+    } catch (err) {
+      console.warn("Could not fetch Vercel OIDC token via SDK:", err.message);
+    }
+  }
 
   let auth;
 
@@ -69,7 +79,7 @@ export async function getSheetsClient(passedOidcToken) {
     });
   } else if (process.env.GCP_WORKLOAD_IDENTITY_PROVIDER && !oidcToken) {
     throw new Error(
-      "GCP_WORKLOAD_IDENTITY_PROVIDER is configured, but Vercel OIDC Token was not detected. Please enable OpenID Connect under Vercel Project Settings -> Security."
+      "GCP_WORKLOAD_IDENTITY_PROVIDER is configured, but Vercel OIDC Token was not issued. Please ensure Vercel OpenID Connect is active."
     );
   } else if (process.env.GOOGLE_PRIVATE_KEY) {
     const privateKey = process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, "\n");
@@ -82,7 +92,7 @@ export async function getSheetsClient(passedOidcToken) {
     return google.sheets({ version: "v4", auth: process.env.GOOGLE_API_KEY });
   } else {
     throw new Error(
-      "Missing authentication configuration. Please configure GCP_WORKLOAD_IDENTITY_PROVIDER and enable Vercel OpenID Connect."
+      "Missing authentication configuration."
     );
   }
 
