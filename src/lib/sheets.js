@@ -6,6 +6,7 @@ import { ExternalAccountClient } from "google-auth-library";
  * Handles formats like:
  * - =HYPERLINK("https://drive.google.com/file/d/FILE_ID/view?usp=sharing", "H/view...")
  * - https://drive.google.com/file/d/FILE_ID/view?usp=sharing
+ * - H/view?usp=sharing
  * - FILE_ID directly
  */
 export function parseDriveImageUrl(url) {
@@ -92,7 +93,7 @@ export async function getSheetsClient() {
 }
 
 /**
- * Fetches items and variants from Google Sheet dynamically.
+ * Fetches items and variants from Google Sheet dynamically with double-fallback fetching.
  */
 export async function getMerchandiseProducts() {
   const spreadsheetId = process.env.GOOGLE_SHEET_ID;
@@ -102,50 +103,61 @@ export async function getMerchandiseProducts() {
 
   const sheets = await getSheetsClient();
 
-  // Get spreadsheet metadata to retrieve exact sheet tab names dynamically
-  const spreadsheetMeta = await sheets.spreadsheets.get({
-    spreadsheetId,
-  });
+  // 1. Retrieve exact tab names from spreadsheet metadata
+  let tabNames = [];
+  try {
+    const spreadsheetMeta = await sheets.spreadsheets.get({ spreadsheetId });
+    const sheetTabs = spreadsheetMeta.data.sheets || [];
+    tabNames = sheetTabs.map((s) => s.properties.title);
+  } catch (metaErr) {
+    console.warn("Metadata fetch failed, defaulting to Sheet1/Sheet2:", metaErr.message);
+  }
 
-  const sheetTabs = spreadsheetMeta.data.sheets || [];
-  const tabNames = sheetTabs.map((s) => s.properties.title);
-
-  // Find items tab name (or fallback to 1st tab)
   const itemsTabName =
     tabNames.find((name) => name.toLowerCase().includes("item")) ||
     tabNames[0] ||
     "Sheet1";
 
-  // Find variants tab name (or fallback to 2nd tab if present)
   const variantsTabName =
     tabNames.find((name) => name.toLowerCase().includes("variant")) ||
     (tabNames.length > 1 ? tabNames[1] : null);
 
-  // Fetch items and variants using actual tab names with valueRenderOption FORMULA
-  const [itemsRes, variantsRes] = await Promise.all([
-    sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range: `'${itemsTabName}'!A2:F`,
-      valueRenderOption: "FORMULA",
-    }),
+  // Helper to fetch sheet values safely with FORMULA fallback
+  async function fetchSheetValues(tabName, rangeCols) {
+    const range = tabName ? `'${tabName}'!${rangeCols}` : rangeCols;
+    try {
+      const res = await sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range,
+        valueRenderOption: "FORMULA",
+      });
+      if (res.data && res.data.values && res.data.values.length > 0) {
+        return res.data.values;
+      }
+    } catch (err) {
+      console.warn(`FORMULA mode failed for ${range}, trying default:`, err.message);
+    }
 
-    variantsTabName
-      ? sheets.spreadsheets.values
-          .get({
-            spreadsheetId,
-            range: `'${variantsTabName}'!A2:E`,
-            valueRenderOption: "FORMULA",
-          })
-          .catch(() => ({ data: { values: [] } }))
-      : Promise.resolve({ data: { values: [] } }),
+    try {
+      const res = await sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range,
+      });
+      return res.data?.values || [];
+    } catch (err) {
+      console.error(`Failed to fetch range ${range}:`, err.message);
+      return [];
+    }
+  }
+
+  const [rawItems, rawVariants] = await Promise.all([
+    fetchSheetValues(itemsTabName, "A2:F"),
+    variantsTabName ? fetchSheetValues(variantsTabName, "A2:E") : Promise.resolve([]),
   ]);
-
-  const rawItems = itemsRes.data.values || [];
-  const rawVariants = variantsRes.data.values || [];
 
   // Parse variants list
   const variants = rawVariants
-    .filter((row) => row && row[0] && row[0].toString().trim() !== "")
+    .filter((row) => row && row[0] && row[0].toString().trim() !== "" && row[0].toString().toLowerCase() !== "variant_id")
     .map((row) => ({
       variantId: (row[0] || "").toString().trim(),
       itemId: (row[1] || "").toString().trim(),
@@ -154,9 +166,9 @@ export async function getMerchandiseProducts() {
       imgUrl: parseDriveImageUrl((row[4] || "").toString()),
     }));
 
-  // Parse items and attach matching variants
+  // Parse items list
   const validItemRows = rawItems.filter(
-    (row) => row && row[0] && row[0].toString().trim() !== ""
+    (row) => row && row[0] && row[0].toString().trim() !== "" && row[0].toString().toLowerCase() !== "item_id"
   );
 
   const products = validItemRows.map((row) => {
