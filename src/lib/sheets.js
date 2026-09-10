@@ -5,8 +5,8 @@ import { ExternalAccountClient } from "google-auth-library";
  * Parses Google Drive share URL into a direct image CDN URL.
  * Converts formats like:
  * - https://drive.google.com/file/d/FILE_ID/view?usp=sharing
- * - H/view?usp=sharing (shortened segment with ID)
- * - W/view?usp=sharing
+ * - H/view?usp=sharing
+ * - FILE_ID directly
  */
 export function parseDriveImageUrl(url) {
   if (!url) return "";
@@ -86,7 +86,7 @@ export async function getSheetsClient() {
 }
 
 /**
- * Fetches items and variants from Google Sheet and returns merged merchandise product list.
+ * Fetches items and variants from Google Sheet dynamically.
  */
 export async function getMerchandiseProducts() {
   const spreadsheetId = process.env.GOOGLE_SHEET_ID;
@@ -96,30 +96,40 @@ export async function getMerchandiseProducts() {
 
   const sheets = await getSheetsClient();
 
-  // Fetch items and variants concurrently
+  // Get spreadsheet metadata to retrieve exact sheet tab names dynamically
+  const spreadsheetMeta = await sheets.spreadsheets.get({
+    spreadsheetId,
+  });
+
+  const sheetTabs = spreadsheetMeta.data.sheets || [];
+  const tabNames = sheetTabs.map((s) => s.properties.title);
+
+  // Find items tab name (or fallback to 1st tab)
+  const itemsTabName =
+    tabNames.find((name) => name.toLowerCase().includes("item")) ||
+    tabNames[0] ||
+    "Sheet1";
+
+  // Find variants tab name (or fallback to 2nd tab if present)
+  const variantsTabName =
+    tabNames.find((name) => name.toLowerCase().includes("variant")) ||
+    (tabNames.length > 1 ? tabNames[1] : null);
+
+  // Fetch items and variants using actual tab names safely wrapped in quotes
   const [itemsRes, variantsRes] = await Promise.all([
-    sheets.spreadsheets.values
-      .get({
-        spreadsheetId,
-        range: "items!A2:F",
-      })
-      .catch(async () => {
-        return sheets.spreadsheets.values.get({
-          spreadsheetId,
-          range: "Sheet1!A2:F",
-        });
-      }),
-    sheets.spreadsheets.values
-      .get({
-        spreadsheetId,
-        range: "variants!A2:E",
-      })
-      .catch(async () => {
-        return sheets.spreadsheets.values.get({
-          spreadsheetId,
-          range: "Sheet2!A2:E",
-        });
-      }),
+    sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `'${itemsTabName}'!A2:F`,
+    }),
+
+    variantsTabName
+      ? sheets.spreadsheets.values
+          .get({
+            spreadsheetId,
+            range: `'${variantsTabName}'!A2:E`,
+          })
+          .catch(() => ({ data: { values: [] } }))
+      : Promise.resolve({ data: { values: [] } }),
   ]);
 
   const rawItems = itemsRes.data.values || [];
