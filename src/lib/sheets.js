@@ -57,7 +57,7 @@ export async function getSheetsClient() {
     auth = ExternalAccountClient.fromJSON({
       type: "external_account",
       audience: `//iam.googleapis.com/${process.env.GCP_WORKLOAD_IDENTITY_PROVIDER}`,
-      subject_token_type: "urn:ietf:params:oauth:token-type:jwt",
+      subject_token_type: "urn:ietf:params:oauth:token-type:id_token",
       token_url: "https://sts.googleapis.com/v1/token",
       service_account_impersonation_url: `https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${serviceAccountEmail}:generateAccessToken`,
       subject_token_supplier: {
