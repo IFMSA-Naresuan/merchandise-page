@@ -4,5 +4,3 @@ out/
 dist/
 *.local
 spheric*
-.vercel
-.env*

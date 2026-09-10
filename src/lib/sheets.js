@@ -1,62 +1,25 @@
 import { google } from "googleapis";
 import { ExternalAccountClient } from "google-auth-library";
 
-const FALLBACK_PRODUCTS = [
-  {
-    itemId: "pants-32",
-    name: "NU Med Pants",
-    price: 189,
-    defaultImgUrl: "",
-    haveVariant: true,
-    outOfStock: false,
-    variants: [
-      { variantId: "pants-default", itemId: "pants-32", variantName: "Default", quantity: 50, imgUrl: "" },
-      { variantId: "pants-black", itemId: "pants-32", variantName: "Black", quantity: 50, imgUrl: "" },
-      { variantId: "pants-blue", itemId: "pants-32", variantName: "Blue", quantity: 50, imgUrl: "" },
-    ],
-  },
-  {
-    itemId: "shoes-32",
-    name: "NU Med Shoes",
-    price: 99,
-    defaultImgUrl: "",
-    haveVariant: false,
-    outOfStock: false,
-    variants: [],
-  },
-  {
-    itemId: "tumbler-30",
-    name: "NU Med ThermoShield Tumbler",
-    price: 490,
-    defaultImgUrl: "",
-    haveVariant: false,
-    outOfStock: false,
-    variants: [],
-  },
-  {
-    itemId: "stickers-31",
-    name: "Medical Student Life Stickers",
-    price: 89,
-    defaultImgUrl: "",
-    haveVariant: false,
-    outOfStock: false,
-    variants: [],
-  },
-];
-
 /**
  * Parses Google Drive share URL into a direct image CDN URL.
+ * Converts formats like:
+ * - https://drive.google.com/file/d/FILE_ID/view?usp=sharing
+ * - H/view?usp=sharing
+ * - FILE_ID directly
  */
 export function parseDriveImageUrl(url) {
   if (!url) return "";
   if (typeof url !== "string") return "";
 
+  // If already a full http URL that isn't Google Drive, return as is
   if (url.startsWith("http") && !url.includes("drive.google.com") && !url.includes("docs.google.com")) {
     return url;
   }
 
   let fileId = "";
 
+  // Extract ID from full URL or share string
   const fileDMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
   if (fileDMatch) {
     fileId = fileDMatch[1];
@@ -128,85 +91,80 @@ export async function getSheetsClient() {
 export async function getMerchandiseProducts() {
   const spreadsheetId = process.env.GOOGLE_SHEET_ID;
   if (!spreadsheetId) {
-    return FALLBACK_PRODUCTS;
+    throw new Error("GOOGLE_SHEET_ID environment variable is missing.");
   }
 
-  try {
-    const sheets = await getSheetsClient();
+  const sheets = await getSheetsClient();
 
-    // Get spreadsheet metadata to retrieve exact sheet tab names dynamically
-    const spreadsheetMeta = await sheets.spreadsheets.get({
+  // Get spreadsheet metadata to retrieve exact sheet tab names dynamically
+  const spreadsheetMeta = await sheets.spreadsheets.get({
+    spreadsheetId,
+  });
+
+  const sheetTabs = spreadsheetMeta.data.sheets || [];
+  const tabNames = sheetTabs.map((s) => s.properties.title);
+
+  // Find items tab name (or fallback to 1st tab)
+  const itemsTabName =
+    tabNames.find((name) => name.toLowerCase().includes("item")) ||
+    tabNames[0] ||
+    "Sheet1";
+
+  // Find variants tab name (or fallback to 2nd tab if present)
+  const variantsTabName =
+    tabNames.find((name) => name.toLowerCase().includes("variant")) ||
+    (tabNames.length > 1 ? tabNames[1] : null);
+
+  // Fetch items and variants using actual tab names safely wrapped in quotes
+  const [itemsRes, variantsRes] = await Promise.all([
+    sheets.spreadsheets.values.get({
       spreadsheetId,
-    });
+      range: `'${itemsTabName}'!A2:F`,
+    }),
 
-    const sheetTabs = spreadsheetMeta.data.sheets || [];
-    const tabNames = sheetTabs.map((s) => s.properties.title);
+    variantsTabName
+      ? sheets.spreadsheets.values
+          .get({
+            spreadsheetId,
+            range: `'${variantsTabName}'!A2:E`,
+          })
+          .catch(() => ({ data: { values: [] } }))
+      : Promise.resolve({ data: { values: [] } }),
+  ]);
 
-    const itemsTabName =
-      tabNames.find((name) => name.toLowerCase().includes("item")) ||
-      tabNames[0] ||
-      "Sheet1";
+  const rawItems = itemsRes.data.values || [];
+  const rawVariants = variantsRes.data.values || [];
 
-    const variantsTabName =
-      tabNames.find((name) => name.toLowerCase().includes("variant")) ||
-      (tabNames.length > 1 ? tabNames[1] : null);
+  // Parse variants list
+  const variants = rawVariants.map((row) => ({
+    variantId: row[0] || "",
+    itemId: row[1] || "",
+    variantName: row[2] || "Default",
+    quantity: Number(row[3]) || 0,
+    imgUrl: parseDriveImageUrl(row[4] || ""),
+  }));
 
-    const [itemsRes, variantsRes] = await Promise.all([
-      sheets.spreadsheets.values.get({
-        spreadsheetId,
-        range: `'${itemsTabName}'!A2:F`,
-      }),
+  // Parse items and attach matching variants
+  const products = rawItems.map((row) => {
+    const itemId = row[0] || "";
+    const itemName = row[1] || "";
+    const price = Number(row[2]) || 0;
+    const defaultImgUrl = parseDriveImageUrl(row[3] || "");
+    const haveVariant = (row[4] || "").toString().toUpperCase() === "TRUE";
+    const outOfStock = (row[5] || "").toString().toUpperCase() === "TRUE";
 
-      variantsTabName
-        ? sheets.spreadsheets.values
-            .get({
-              spreadsheetId,
-              range: `'${variantsTabName}'!A2:E`,
-            })
-            .catch(() => ({ data: { values: [] } }))
-        : Promise.resolve({ data: { values: [] } }),
-    ]);
+    const itemVariants = variants.filter((v) => v.itemId === itemId);
 
-    const rawItems = itemsRes.data.values || [];
-    const rawVariants = variantsRes.data.values || [];
+    return {
+      itemId,
+      name: itemName,
+      price,
+      defaultImgUrl,
+      haveVariant,
+      outOfStock,
+      variants: itemVariants,
+    };
+  });
 
-    const variants = rawVariants.map((row) => ({
-      variantId: row[0] || "",
-      itemId: row[1] || "",
-      variantName: row[2] || "Default",
-      quantity: Number(row[3]) || 0,
-      imgUrl: parseDriveImageUrl(row[4] || ""),
-    }));
-
-    const parsedProducts = rawItems
-      .filter((row) => row && row.length > 0 && row[0])
-      .map((row) => {
-        const itemId = row[0] || "";
-        const itemName = row[1] || itemId;
-        const price = Number(row[2]) || 0;
-        const defaultImgUrl = parseDriveImageUrl(row[3] || "");
-        const haveVariant = (row[4] || "").toString().toUpperCase() === "TRUE";
-        const outOfStock = (row[5] || "").toString().toUpperCase() === "TRUE";
-
-        const itemVariants = variants.filter((v) => v.itemId === itemId);
-
-        return {
-          itemId,
-          name: itemName,
-          price,
-          defaultImgUrl,
-          haveVariant,
-          outOfStock,
-          variants: itemVariants,
-        };
-      });
-
-    if (parsedProducts.length > 0) {
-      return parsedProducts;
-    }
-  } catch (err) {
-    console.warn("Using fallback merchandise data due to sheet fetch error:", err);
-  }
-
-  return FALLBACK_PRODUCTS;
+  return products;
 }
