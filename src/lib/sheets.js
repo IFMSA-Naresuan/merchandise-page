@@ -115,11 +115,17 @@ export async function getMerchandiseProducts(passedOidcToken) {
     console.warn("Metadata fetch failed:", metaErr.message);
   }
 
+  // Find items/products tab name (checking "product", "item", "merch", or skipping "instruction" / "variant")
   const itemsTabName =
-    tabNames.find((name) => name.toLowerCase().includes("item")) ||
+    tabNames.find((name) => {
+      const lower = name.toLowerCase();
+      return lower.includes("product") || lower.includes("item") || lower.includes("merch");
+    }) ||
+    tabNames.find((name) => !name.toLowerCase().includes("instruction") && !name.toLowerCase().includes("variant")) ||
     tabNames[0] ||
-    "Sheet1";
+    "Products";
 
+  // Find variants tab name (checking "variant")
   const variantsTabName =
     tabNames.find((name) => name.toLowerCase().includes("variant")) ||
     (tabNames.length > 1 ? tabNames[1] : null);
