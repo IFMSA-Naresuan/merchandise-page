@@ -10,7 +10,7 @@ export const revalidate = 0;
 export async function GET(request) {
   let oidcTokenDetected = false;
   let oidcTokenPreview = null;
-  
+
   try {
     const headerList = await headers();
     let oidcToken =
@@ -31,7 +31,7 @@ export async function GET(request) {
       oidcTokenPreview = `${oidcToken.substring(0, 10)}...`;
     }
 
-    const products = await getMerchandiseProducts(oidcToken);
+    const { products, meta } = await getMerchandiseProducts(oidcToken);
 
     return NextResponse.json(
       {
@@ -43,6 +43,7 @@ export async function GET(request) {
           hasServiceAccountEmail: Boolean(process.env.GCP_SERVICE_ACCOUNT_EMAIL || process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL),
           oidcTokenDetected,
           oidcTokenPreview,
+          tabMetadata: meta,
         },
         data: products,
       },

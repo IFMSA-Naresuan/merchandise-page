@@ -53,7 +53,6 @@ export async function getSheetsClient(passedOidcToken) {
 
   let oidcToken = passedOidcToken || process.env.VERCEL_OIDC_TOKEN;
 
-  // Fetch token via official @vercel/oidc SDK if not passed explicitly
   if (!oidcToken) {
     try {
       oidcToken = await getVercelOidcToken();
@@ -77,10 +76,6 @@ export async function getSheetsClient(passedOidcToken) {
       },
       scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
     });
-  } else if (process.env.GCP_WORKLOAD_IDENTITY_PROVIDER && !oidcToken) {
-    throw new Error(
-      "GCP_WORKLOAD_IDENTITY_PROVIDER is configured, but Vercel OIDC Token was not issued. Please ensure Vercel OpenID Connect is active."
-    );
   } else if (process.env.GOOGLE_PRIVATE_KEY) {
     const privateKey = process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, "\n");
     auth = new google.auth.JWT({
@@ -117,7 +112,7 @@ export async function getMerchandiseProducts(passedOidcToken) {
     const sheetTabs = spreadsheetMeta.data.sheets || [];
     tabNames = sheetTabs.map((s) => s.properties.title);
   } catch (metaErr) {
-    console.warn("Metadata fetch failed, defaulting to Sheet1/Sheet2:", metaErr.message);
+    console.warn("Metadata fetch failed:", metaErr.message);
   }
 
   const itemsTabName =
@@ -129,8 +124,8 @@ export async function getMerchandiseProducts(passedOidcToken) {
     tabNames.find((name) => name.toLowerCase().includes("variant")) ||
     (tabNames.length > 1 ? tabNames[1] : null);
 
-  // Helper to fetch sheet values safely
-  async function fetchSheetValues(tabName, rangeCols) {
+  // Helper to fetch sheet values safely with range A1:Z
+  async function fetchSheetValues(tabName, rangeCols = "A1:Z") {
     const range = tabName ? `'${tabName}'!${rangeCols}` : rangeCols;
     try {
       const res = await sheets.spreadsheets.values.get({
@@ -158,11 +153,11 @@ export async function getMerchandiseProducts(passedOidcToken) {
   }
 
   const [rawItems, rawVariants] = await Promise.all([
-    fetchSheetValues(itemsTabName, "A2:F"),
-    variantsTabName ? fetchSheetValues(variantsTabName, "A2:E") : Promise.resolve([]),
+    fetchSheetValues(itemsTabName, "A1:Z"),
+    variantsTabName ? fetchSheetValues(variantsTabName, "A1:Z") : Promise.resolve([]),
   ]);
 
-  // Parse variants list
+  // Parse variants list (ignoring header row)
   const variants = rawVariants
     .filter((row) => row && row[0] && row[0].toString().trim() !== "" && row[0].toString().toLowerCase() !== "variant_id")
     .map((row) => ({
@@ -173,7 +168,7 @@ export async function getMerchandiseProducts(passedOidcToken) {
       imgUrl: parseDriveImageUrl((row[4] || "").toString()),
     }));
 
-  // Parse items list
+  // Parse items list (ignoring header row)
   const validItemRows = rawItems.filter(
     (row) => row && row[0] && row[0].toString().trim() !== "" && row[0].toString().toLowerCase() !== "item_id"
   );
@@ -199,5 +194,15 @@ export async function getMerchandiseProducts(passedOidcToken) {
     };
   });
 
-  return products;
+  return {
+    products,
+    meta: {
+      tabNames,
+      itemsTabName,
+      variantsTabName,
+      rawItemsCount: rawItems.length,
+      rawVariantsCount: rawVariants.length,
+      rawItemsSample: rawItems.slice(0, 3),
+    },
+  };
 }
