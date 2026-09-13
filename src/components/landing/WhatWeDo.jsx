@@ -16,10 +16,6 @@ export default function WhatWeDo() {
           ))}
         </h2>
         <div className="mission-context" data-reveal>
-          <svg className="mission-thread" viewBox="0 0 320 150" aria-hidden="true" fill="none">
-            <path d="M5 28H130C185 28 160 119 219 119H301" pathLength="1" stroke="currentColor" strokeWidth="2" />
-            <circle cx="305" cy="119" r="7" fill="currentColor" />
-          </svg>
           <div className="mission-copy">
             <p className="mission-intro">{mission.intro}</p>
             <p>{mission.body}</p>

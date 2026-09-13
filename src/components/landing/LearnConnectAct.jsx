@@ -18,8 +18,7 @@ export default function LearnConnectAct() {
         ))}
       </ol>
       <div className="journey-outcome" data-reveal>
-        <span className="outcome-branch" aria-hidden="true"><i /><i /><i /></span>
-        <p>{journey.outcome}</p><span aria-hidden="true">↓</span>
+        <p>{journey.outcome}</p>
       </div>
     </section>
   );

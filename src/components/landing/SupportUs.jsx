@@ -18,7 +18,7 @@ export default function SupportUs() {
           </div>
         </div>
         <div className="support-bridge">
-          <p>{support.bridge}</p><span aria-hidden="true">↓</span>
+          <p>{support.bridge}</p>
         </div>
       </div>
     </section>
