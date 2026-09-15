@@ -3,20 +3,20 @@ import { landingContent } from "../../content/landing.js";
 export default function Hero() {
   const { hero } = landingContent;
   return (
-    <section className="hero-chapter" aria-labelledby="hero-title">
-      <div className="landing-hero landing-shell">
-        <div className="hero-scene">
-          <div className="hero-copy">
-            <p className="eyebrow"><span className="small-rule" aria-hidden="true" />{hero.eyebrow}</p>
-            <p className="hero-description">{hero.description}</p>
+    <section className="hero" aria-labelledby="hero-title">
+      <div className="hero__layout landing-container">
+        <div className="hero__intro">
+          <div className="hero__copy">
+            <p className="landing-eyebrow"><span className="landing-eyebrow__rule" aria-hidden="true" />{hero.eyebrow}</p>
+            <p className="hero__description">{hero.description}</p>
           </div>
         </div>
-        <div className="hero-signature">
+        <div className="hero__wordmark">
           <h1 id="hero-title">{hero.title}</h1>
-          <div className="hero-bottom">
+          <div className="hero__footer">
             <p>{hero.motifCaption}</p>
-            <a className="text-link scroll-cue" href="#what-we-do">
-              {hero.scrollLabel}<span className="circle-arrow" aria-hidden="true">↓</span>
+            <a className="landing-action-link hero__discover-link" href="#what-we-do">
+              {hero.scrollLabel}<span className="landing-action-link__arrow" aria-hidden="true">↓</span>
             </a>
           </div>
         </div>

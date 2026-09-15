@@ -16,24 +16,24 @@ export default function Header() {
   }
 
   return (
-    <header className="landing-header" onKeyDown={closeOnEscape}>
-      <a className="skip-link" href="#main-content">{nav.skipLabel}</a>
-      <div className="landing-shell header-inner">
-        <a className="header-brand" href="#top">
-          <span className="brand-node" aria-hidden="true" />{nav.brand}
+    <header className="site-header" onKeyDown={closeOnEscape}>
+      <a className="site-header__skip-link" href="#main-content">{nav.skipLabel}</a>
+      <div className="landing-container site-header__inner">
+        <a className="site-header__brand" href="#top">
+          <span className="site-header__brand-dot" aria-hidden="true" />{nav.brand}
         </a>
-        <nav aria-label="Primary navigation" className="header-navigation">
+        <nav aria-label="Primary navigation" className="site-header__desktop-nav">
           {nav.items.map((item) => (
             <a key={item.href} href={item.href}>
               {item.label}
             </a>
           ))}
         </nav>
-        <details ref={menu} className="mobile-menu">
-          <summary ref={menuSummary} className="menu-toggle">
+        <details ref={menu} className="site-header__mobile-menu">
+          <summary ref={menuSummary} className="site-header__menu-toggle">
             {nav.menuLabel}<span aria-hidden="true" />
           </summary>
-          <nav aria-label="Primary navigation" className="mobile-navigation">
+          <nav aria-label="Primary navigation" className="site-header__mobile-nav">
             {nav.items.map((item) => (
               <a key={item.href} href={item.href} onClick={() => { menu.current.open = false; }}>
                 {item.label}

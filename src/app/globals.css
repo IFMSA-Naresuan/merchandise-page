@@ -1,6 +1,8 @@
+/* Global entry point: Tailwind utilities, then custom landing-page styles. */
 @import "tailwindcss";
 @import "./landing.css";
 
+/* Shared self-hosted Poppins fonts — used throughout the site. */
 @font-face {
   font-family: "Poppins";
   src: url("/fonts/Poppins/Poppins-ExtraLight.ttf") format("truetype");
@@ -25,10 +27,12 @@
   font-display: swap;
 }
 
+/* Tailwind font token — enables the font-poppins utility in JSX. */
 @theme {
   --font-poppins: "Poppins", sans-serif;
 }
 
+/* Document defaults — all pages. */
 @layer base {
   * {
     box-sizing: border-box;
@@ -47,6 +51,7 @@
   }
 }
 
+/* Catalogue image placeholder — ProductImage.jsx uses wireframe-image. */
 @layer components {
   .wireframe-image {
     background-image:

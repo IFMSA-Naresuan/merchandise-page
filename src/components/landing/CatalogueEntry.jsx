@@ -4,16 +4,16 @@ import ProductGrid from "../ProductGrid.jsx";
 export default function CatalogueEntry() {
   const { catalogue } = landingContent;
   return (
-    <section id="merchandise" className="catalogue-entry" aria-labelledby="catalogue-title">
-      <div className="catalogue-panel">
-        <div className="landing-shell catalogue-intro" data-reveal>
+    <section id="merchandise" className="merchandise" aria-labelledby="catalogue-title">
+      <div className="merchandise__panel">
+        <div className="landing-container merchandise__intro" data-reveal>
           <div>
-            <p className="eyebrow">{catalogue.eyebrow}</p>
+            <p className="landing-eyebrow">{catalogue.eyebrow}</p>
             <h2 id="catalogue-title">{catalogue.title}</h2>
           </div>
-          <p className="catalogue-description">{catalogue.body}</p>
+          <p className="merchandise__description">{catalogue.body}</p>
         </div>
-        <div className="catalogue-grid-entry" data-reveal><ProductGrid /></div>
+        <div className="merchandise__grid" data-reveal><ProductGrid /></div>
       </div>
     </section>
   );
